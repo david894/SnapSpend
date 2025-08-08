@@ -5,6 +5,7 @@ import com.kx.snapspend.data.dao.CollectionsDao
 import com.kx.snapspend.data.dao.ExpensesDao
 import com.kx.snapspend.model.Collections
 import com.kx.snapspend.model.Expenses
+import kotlinx.coroutines.flow.Flow
 
 /**
  * Repository module for handling data operations.
@@ -66,7 +67,7 @@ class BudgetTrackerRepository(
      * @param yearMonth The year and month in "YYYY-MM" format.
      * @return LiveData list of expenses for that month.
      */
-    fun getExpensesForMonth(yearMonth: String): LiveData<List<Expenses>> {
+    fun getExpensesForMonth(yearMonth: String): Flow<List<Expenses>> { // <-- Change LiveData to Flow
         return expensesDao.getExpensesForMonth(yearMonth)
     }
 
@@ -90,4 +91,26 @@ class BudgetTrackerRepository(
         return expensesDao.getTotalForCollectionInRange(collectionName, startDate, endDate) ?: 0.0
     }
 
+    suspend fun getExpenseById(id: Long): Expenses? {
+        return expensesDao.getExpenseById(id)
+    }
+
+    /**
+     * Gets the total spending for a specific date range.
+     * @param startDate The start of the date range in milliseconds.
+     * @param endDate The end of the date range in milliseconds.
+     * @return The total amount spent, or 0.0 if null.
+     */
+    suspend fun getTotalForDateRange(startDate: Long, endDate: Long): Double {
+        return expensesDao.getTotalForDateRange(startDate, endDate) ?: 0.0
+    }
+
+    fun getAllCollectionsSync(): List<Collections> {
+        return collectionsDao.getAllCollectionsSync()
+    }
+
+    // In BudgetTrackerRepository.kt
+    fun getTransactionsForCollectionInMonth(yearMonth: String, collectionName: String): Flow<List<Expenses>> {
+        return expensesDao.getTransactionsForCollectionInMonth(yearMonth, collectionName)
+    }
 }

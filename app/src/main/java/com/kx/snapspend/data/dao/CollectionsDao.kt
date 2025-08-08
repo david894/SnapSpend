@@ -20,4 +20,7 @@ interface CollectionsDao {
     // Deletes a collection by its name.
     @Query("DELETE FROM collections WHERE name = :collectionName")
     suspend fun deleteCollection(collectionName: String)
+
+    @Query("SELECT * FROM collections ORDER BY name ASC")
+    fun getAllCollectionsSync(): List<Collections>
 }
