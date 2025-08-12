@@ -1,5 +1,6 @@
 package com.kx.snapspend.screen
 
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -23,7 +24,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.foundation.clickable // Add this import
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.filled.Label
 import com.kx.snapspend.model.Collections
 import com.kx.snapspend.model.Expenses
 import com.kx.snapspend.viewmodel.ChangeType
@@ -37,22 +41,34 @@ import java.util.Locale
 import kotlin.math.abs
 
 import androidx.compose.runtime.collectAsState
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import com.kx.snapspend.ui.WidgetDialog
+import com.kx.snapspend.ui.colorFromHex
+import com.kx.snapspend.ui.iconMap
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DashboardScreen(
     viewModel: MainViewModel,
     onNavigateToSettings: () -> Unit,
-    onNavigateToDetails: (String) -> Unit // Add this new parameter
+    onNavigateToDetails: (String) -> Unit, // Add this new parameter
+    onNavigateToEdit: (Long) -> Unit, // Add this new callback
+    onNavigateToReports : () -> Unit,
 ) {
     val summary by viewModel.dashboardSummary.collectAsState()
     val collections by viewModel.allCollections.observeAsState(initial = emptyList())
     val monthlyExpenses by viewModel.monthlyExpenses.collectAsState() // Use collectAsState for Flow
     // NEW: Observe the viewing date from the ViewModel
     val viewingDate by viewModel.viewingDate.collectAsState()
+    val chartData by viewModel.chartData.collectAsState() // <-- Add this line
 
     var showDialog by remember { mutableStateOf(false) }
+    var showAddCollectionDialog by remember { mutableStateOf(false) } // New state for the collection dialog
     var selectedCollection by remember { mutableStateOf<String?>(null) }
     val context = androidx.compose.ui.platform.LocalContext.current
 
@@ -70,7 +86,18 @@ fun DashboardScreen(
             }
         )
     }
-
+    if (showAddCollectionDialog) {
+        AddCollectionDialog(
+            onConfirm = { newName ->
+                viewModel.addCollection(newName)
+                Toast.makeText(context, "Collection '$newName' added!", Toast.LENGTH_SHORT).show()
+                showAddCollectionDialog = false
+            },
+            onDismiss = {
+                showAddCollectionDialog = false
+            }
+        )
+    }
     Scaffold(
         topBar = {
             TopAppBar(
@@ -86,11 +113,6 @@ fun DashboardScreen(
                     }
                 }
             )
-        },
-        floatingActionButton = {
-            FloatingActionButton(onClick = { /* TODO */ }) {
-                Icon(Icons.Filled.Add, "Add Expense")
-            }
         }
     ) { innerPadding ->
         Column(
@@ -104,38 +126,110 @@ fun DashboardScreen(
                 onPrevious = { viewModel.previousMonth() },
                 onNext = { viewModel.nextMonth() }
             )
-
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f)
-            ) {
-                item { MonthlySummaryCard(summary) }
-                if (summary.spendingBreakdown.isNotEmpty()) {
-                    item {
-                        SpendingBreakdownCard(
-                            breakdown = summary.spendingBreakdown,
-                            onItemClick = onNavigateToDetails // Pass the callback here
-                        )
-                    }
-                }
-                item {
+            if (monthlyExpenses.isEmpty()) {
+                // If the list is empty, show the "Empty State" message
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f) // Takes up the remaining space
+                        .padding(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
                     Text(
-                        text = "Transactions",
-                        style = MaterialTheme.typography.titleMedium,
-                        modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 8.dp)
+                        text = "No Transactions",
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "Add an expense using the 'Quick Add' buttons below to get started.",
+                        style = MaterialTheme.typography.bodyLarge,
+                        textAlign = TextAlign.Center,
+                        color = Color.Gray
                     )
                 }
-                items(monthlyExpenses) { expense ->
-                    ExpenseListItem(expense)
+            } else {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                ) {
+                    item {
+                        PieChartCard(
+                            summary = summary,
+                            onClick = onNavigateToReports // Pass the function reference directly
+                        )
+                    }
+                    item {
+                        Text(
+                            text = "Transactions",
+                            style = MaterialTheme.typography.titleMedium,
+                            modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 8.dp)
+                        )
+                    }
+                    items(monthlyExpenses) { expense ->
+                        // Pass the callback to the list item
+                        ExpenseListItem(expense, onClick = { onNavigateToEdit(expense.id) })
+                    }
                 }
             }
-            QuickAddSection(collections) { collectionName ->
-                selectedCollection = collectionName
-                showDialog = true
-            }
+            QuickAddSection(
+                collections = collections,
+                onCollectionClick = { collectionName ->
+                    selectedCollection = collectionName
+                    showDialog = true
+                },
+                onAddClick = {
+                    showAddCollectionDialog = true
+                }
+            )
         }
     }
+}
+// NEW: A dialog specifically for adding a new collection
+@Composable
+fun AddCollectionDialog(
+    onConfirm: (String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    var newName by remember { mutableStateOf("") }
+    val focusManager = LocalFocusManager.current
+    val keyboardController = LocalSoftwareKeyboardController.current
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Add New Collection") },
+        text = {
+            OutlinedTextField(
+                value = newName,
+                onValueChange = { newName = it },
+                label = { Text("Collection Name") },
+                keyboardOptions = KeyboardOptions(
+                    imeAction = ImeAction.Done // Important for the keyboard action
+                ),
+                singleLine = true
+            )
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    if (newName.isNotBlank()) {
+                        onConfirm(newName)
+                        focusManager.clearFocus()
+                        keyboardController?.hide()
+                    }
+                }
+            ) {
+                Text("Add")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
 }
 
 // NEW Composable for the month navigation
@@ -159,53 +253,6 @@ fun MonthSelector(date: Calendar, onPrevious: () -> Unit, onNext: () -> Unit) {
         )
         IconButton(onClick = onNext) {
             Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = "Next Month")
-        }
-    }
-}
-
-// The rest of the file (SpendingBreakdownCard, MonthlySummaryCard, etc.) remains unchanged.
-// I'm including them here for completeness.
-
-@Composable
-fun SpendingBreakdownCard(breakdown: List<CollectionSpending>) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text(
-                text = "Spending by Category",
-                style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.padding(bottom = 8.dp)
-            )
-            breakdown.forEach { spending ->
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(8.dp)
-                            .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.secondary)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = spending.collectionName,
-                        modifier = Modifier.weight(1f),
-                        style = MaterialTheme.typography.bodyLarge
-                    )
-                    Text(
-                        text = "RM ${"%.2f".format(spending.totalAmount)}",
-                        fontWeight = FontWeight.SemiBold,
-                        style = MaterialTheme.typography.bodyLarge
-                    )
-                }
-            }
         }
     }
 }
@@ -263,12 +310,12 @@ fun MonthlySummaryCard(summary: DashboardSummary) {
 }
 
 @Composable
-fun ExpenseListItem(expense: Expenses) {
-    val date = SimpleDateFormat("dd MMM, hh:mm a", Locale.getDefault()).format(Date(expense.timestamp))
+fun ExpenseListItem(expense: Expenses, onClick: () -> Unit) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 4.dp)
+            .clickable(onClick = onClick)
     ) {
         Row(
             modifier = Modifier
@@ -279,6 +326,17 @@ fun ExpenseListItem(expense: Expenses) {
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(text = expense.collectionName, fontWeight = FontWeight.Bold)
+
+                // NEW: Display the location category if it's available
+                if (expense.locationCategory != null) {
+                    Text(
+                        text = expense.locationCategory!!,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color.Gray
+                    )
+                }
+
+                val date = SimpleDateFormat("dd MMM, hh:mm a", Locale.getDefault()).format(Date(expense.timestamp))
                 Text(text = date, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
             }
             Text(
@@ -291,7 +349,11 @@ fun ExpenseListItem(expense: Expenses) {
 }
 
 @Composable
-fun QuickAddSection(collections: List<Collections>, onCollectionClick: (String) -> Unit) {
+fun QuickAddSection(
+    collections: List<Collections>,
+    onCollectionClick: (String) -> Unit,
+    onAddClick: () -> Unit // New callback for the add button
+) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shadowElevation = 8.dp
@@ -302,127 +364,38 @@ fun QuickAddSection(collections: List<Collections>, onCollectionClick: (String) 
                 style = MaterialTheme.typography.titleMedium,
                 modifier = Modifier.padding(start = 16.dp, bottom = 8.dp)
             )
-            // Use LazyRow for a horizontally scrolling list
-            LazyRow(
-                contentPadding = PaddingValues(horizontal = 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp) // Adds space between buttons
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically // Aligns items vertically in the center
             ) {
-                items(collections) { collection ->
-                    Button(onClick = { onCollectionClick(collection.name) }) {
-                        Text(collection.name)
+                // The LazyRow now takes up all available space, pushing the button to the end.
+                LazyRow(
+                    modifier = Modifier.weight(1f),
+                    contentPadding = PaddingValues(start = 16.dp, end = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    items(collections) { collection ->
+                        Button(onClick = { onCollectionClick(collection.name) }) {
+                            Text(collection.name)
+                        }
                     }
+                }
+
+                // This IconButton is now correctly positioned at the end of the Row.
+                IconButton(
+                    onClick = onAddClick,
+                    modifier = Modifier
+                        .padding(end = 8.dp) // Add some padding
+                        .background(MaterialTheme.colorScheme.secondaryContainer, shape = CircleShape)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Add,
+                        contentDescription = "Add new collection",
+                        tint = MaterialTheme.colorScheme.onSecondaryContainer
+                    )
                 }
             }
         }
     }
 }
 
-@Composable
-fun SpendingBreakdownCard(
-    breakdown: List<CollectionSpending>,
-    onItemClick: (String) -> Unit // Add a callback for clicks
-) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text(
-                text = "Spending by Category",
-                style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.padding(bottom = 8.dp)
-            )
-            breakdown.forEach { spending ->
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(MaterialTheme.shapes.medium) // Make the whole row look clickable
-                        .clickable { onItemClick(spending.collectionName) } // Make it clickable
-                        .padding(vertical = 8.dp, horizontal = 4.dp), // Add padding for the click area
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(8.dp)
-                            .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.secondary)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = spending.collectionName,
-                        modifier = Modifier.weight(1f),
-                        style = MaterialTheme.typography.bodyLarge
-                    )
-                    Text(
-                        text = "RM ${"%.2f".format(spending.totalAmount)}",
-                        fontWeight = FontWeight.SemiBold,
-                        style = MaterialTheme.typography.bodyLarge
-                    )
-                }
-            }
-        }
-    }
-}
-//@Composable
-//fun ExpenseInputDialog(
-//    collectionName: String,
-//    onConfirm: (Double) -> Unit,
-//    onDismiss: () -> Unit
-//) {
-//    var text by remember { mutableStateOf("") }
-//    val keyboardController = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
-//    val focusRequester = remember { androidx.compose.ui.focus.FocusRequester() }
-//
-//    AlertDialog(
-//        onDismissRequest = onDismiss,
-//        title = { Text("Add to $collectionName") },
-//        text = {
-//            Column {
-//                Text("Enter the amount for your expense.")
-//                Spacer(modifier = Modifier.height(16.dp))
-//                OutlinedTextField(
-//                    value = text,
-//                    onValueChange = { text = it },
-//                    label = { Text("Amount (RM)") },
-//                    singleLine = true,
-//                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
-//                        keyboardType = androidx.compose.ui.text.input.KeyboardType.Number,
-//                        imeAction = androidx.compose.ui.text.input.ImeAction.Done
-//                    ),
-//                    keyboardActions = androidx.compose.foundation.text.KeyboardActions(
-//                        onDone = {
-//                            val amount = text.toDoubleOrNull()
-//                            if (amount != null && amount > 0) {
-//                                onConfirm(amount)
-//                            }
-//                            keyboardController?.hide()
-//                        }
-//                    ),
-//                    modifier = Modifier.focusRequester(focusRequester)
-//                )
-//                LaunchedEffect(Unit) {
-//                    focusRequester.requestFocus()
-//                }
-//            }
-//        },
-//        confirmButton = {
-//            Button(
-//                onClick = {
-//                    val amount = text.toDoubleOrNull()
-//                    if (amount != null && amount > 0) {
-//                        onConfirm(amount)
-//                    }
-//                }
-//            ) {
-//                Text("Confirm")
-//            }
-//        },
-//        dismissButton = {
-//            TextButton(onClick = onDismiss) {
-//                Text("Cancel")
-//            }
-//        }
-//    )
-//}

@@ -1,6 +1,7 @@
 package com.kx.snapspend
 
 import android.Manifest
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -28,15 +29,23 @@ import androidx.navigation.compose.rememberNavController
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
 import com.kx.snapspend.screen.DashboardScreen
+import com.kx.snapspend.screen.EditCollectionScreen
+import com.kx.snapspend.screen.EditExpenseScreen
 import com.kx.snapspend.screen.SettingsScreen // You will create this file in the next steps
 import com.kx.snapspend.screen.TransactionListScreen
+import com.kx.snapspend.ui.screens.ReportsScreen
 import com.kx.snapspend.ui.theme.SnapSpendTheme
 import com.kx.snapspend.viewmodel.MainViewModel
 import com.kx.snapspend.viewmodel.MainViewModelFactory
 
 class MainActivity : ComponentActivity() {
+    // In MainActivity.kt
     private val mainViewModel: MainViewModel by viewModels {
-        MainViewModelFactory((application as BudgetTrackerApplication).repository)
+        MainViewModelFactory(
+            (application as BudgetTrackerApplication).repository,
+            (application as BudgetTrackerApplication).firestoreRepository, // Pass it
+            applicationContext
+        )
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -57,36 +66,41 @@ class MainActivity : ComponentActivity() {
     @OptIn(ExperimentalPermissionsApi::class)
     @Composable
     fun AppContent() {
-        val locationPermissionsState = rememberMultiplePermissionsState(
-            listOf(
-                Manifest.permission.ACCESS_COARSE_LOCATION,
-                Manifest.permission.ACCESS_FINE_LOCATION,
-            )
+        val permissionsToRequest = mutableListOf(
+            Manifest.permission.ACCESS_COARSE_LOCATION,
+            Manifest.permission.ACCESS_FINE_LOCATION,
         )
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            permissionsToRequest.add(Manifest.permission.POST_NOTIFICATIONS)
+        }
+        val permissionsState = rememberMultiplePermissionsState(permissions = permissionsToRequest)
 
         // Based on the permission status, show either the permission screen or the main app navigation
-        if (locationPermissionsState.allPermissionsGranted) {
+        if (permissionsState.allPermissionsGranted) {
             // If permissions are granted, set up the NavHost with your screens
             val navController = rememberNavController()
             NavHost(navController = navController, startDestination = "dashboard") {
                 // Route for the Dashboard
+                // In MainActivity.kt, inside NavHost
                 composable("dashboard") {
                     DashboardScreen(
                         viewModel = mainViewModel,
-                        onNavigateToSettings = {
-                            navController.navigate("settings")
-                        },
-                        // Add a new callback for navigating to the details screen
-                        onNavigateToDetails = { collectionName ->
-                            navController.navigate("details/$collectionName")
-                        }
+                        onNavigateToSettings = { navController.navigate("settings") },
+                        onNavigateToDetails = { collectionName -> navController.navigate("details/$collectionName") },
+                        // Pass the new navigation action
+                        onNavigateToEdit = { expenseId -> navController.navigate("edit/$expenseId") },
+                        onNavigateToReports = { navController.navigate("reports") }
                     )
                 }
-                // Route for the Settings screen
+                // In MainActivity.kt, inside NavHost
                 composable("settings") {
                     SettingsScreen(
                         viewModel = mainViewModel,
-                        onNavigateUp = { navController.popBackStack() }
+                        onNavigateUp = { navController.popBackStack() },
+                        // Pass the new navigation action
+                        onNavigateToEditCollection = { collectionName ->
+                            navController.navigate("edit_collection/$collectionName")
+                        }
                     )
                 }
                 // NEW: Route for the Transaction Details screen
@@ -98,6 +112,38 @@ class MainActivity : ComponentActivity() {
                     TransactionListScreen(
                         viewModel = mainViewModel,
                         collectionName = collectionName,
+                        onNavigateUp = { navController.popBackStack() },
+                        onNavigateToEdit = { expenseId -> navController.navigate("edit/$expenseId") }
+                    )
+                }
+                composable(
+                    route = "edit/{expenseId}",
+                    arguments = listOf(navArgument("expenseId") { type = NavType.LongType })
+                ) { backStackEntry ->
+                    val expenseId = backStackEntry.arguments?.getLong("expenseId") ?: 0L
+                    if (expenseId > 0) {
+                        EditExpenseScreen(
+                            viewModel = mainViewModel,
+                            expenseId = expenseId,
+                            onNavigateUp = { navController.popBackStack() }
+                        )
+                    }
+                }
+                // In MainActivity.kt, inside the NavHost
+                composable(
+                    route = "edit_collection/{collectionName}",
+                    arguments = listOf(navArgument("collectionName") { type = NavType.StringType })
+                ) { backStackEntry ->
+                    val collectionName = backStackEntry.arguments?.getString("collectionName") ?: ""
+                    EditCollectionScreen(
+                        viewModel = mainViewModel,
+                        collectionName = collectionName,
+                        onNavigateUp = { navController.popBackStack() }
+                    )
+                }
+                composable("reports") {
+                    ReportsScreen(
+                        viewModel = mainViewModel,
                         onNavigateUp = { navController.popBackStack() }
                     )
                 }
@@ -105,7 +151,7 @@ class MainActivity : ComponentActivity() {
         } else {
             // If permissions are not granted, show the screen asking for them
             PermissionDeniedScreen {
-                locationPermissionsState.launchMultiplePermissionRequest()
+                permissionsState.launchMultiplePermissionRequest()
             }
         }
     }

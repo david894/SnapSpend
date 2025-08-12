@@ -5,7 +5,9 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Update
 import com.kx.snapspend.model.Collections
+import kotlinx.coroutines.flow.Flow
 
 
 @Dao
@@ -23,4 +25,13 @@ interface CollectionsDao {
 
     @Query("SELECT * FROM collections ORDER BY name ASC")
     fun getAllCollectionsSync(): List<Collections>
+
+    @Update
+    suspend fun updateCollection(collection: Collections)
+
+    @Query("SELECT * FROM collections WHERE name = :name")
+    fun getCollectionByName(name: String): Flow<Collections?>
+
+    @Query("SELECT * FROM collections WHERE sharePin = :pin LIMIT 1")
+    fun getCollectionByPin(pin: String): Collections?
 }

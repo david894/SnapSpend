@@ -5,6 +5,7 @@ import com.kx.snapspend.data.dao.CollectionsDao
 import com.kx.snapspend.data.dao.ExpensesDao
 import com.kx.snapspend.model.Collections
 import com.kx.snapspend.model.Expenses
+import com.kx.snapspend.model.MonthlyTotal
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -101,6 +102,10 @@ class BudgetTrackerRepository(
      * @param endDate The end of the date range in milliseconds.
      * @return The total amount spent, or 0.0 if null.
      */
+    suspend fun getTotalForDateRange(startDate: Long, endDate: Long, collectionName: String): Double {
+        return expensesDao.getTotalForDateRange(startDate, endDate, collectionName) ?: 0.0
+    }
+    // ADD THIS VERSION BACK - This is for the main dashboard summary
     suspend fun getTotalForDateRange(startDate: Long, endDate: Long): Double {
         return expensesDao.getTotalForDateRange(startDate, endDate) ?: 0.0
     }
@@ -112,5 +117,40 @@ class BudgetTrackerRepository(
     // In BudgetTrackerRepository.kt
     fun getTransactionsForCollectionInMonth(yearMonth: String, collectionName: String): Flow<List<Expenses>> {
         return expensesDao.getTransactionsForCollectionInMonth(yearMonth, collectionName)
+    }
+
+    fun getExpenseByIdFlow(expenseId: Long): Flow<Expenses?> {
+        return expensesDao.getExpenseByIdFlow(expenseId)
+    }
+
+    suspend fun deleteExpense(expense: Expenses) {
+        expensesDao.deleteExpense(expense)
+    }
+
+    // In BudgetTrackerRepository.kt
+    fun getSpendingForLastSixMonths(sixMonthsAgo: Long): Flow<List<MonthlyTotal>> {
+        return expensesDao.getSpendingForLastSixMonths(sixMonthsAgo)
+    }
+
+    // In BudgetTrackerRepository.kt
+    suspend fun updateCollection(collection: Collections) {
+        collectionsDao.updateCollection(collection)
+    }
+
+    fun getCollectionByName(name: String): Flow<Collections?> {
+        return collectionsDao.getCollectionByName(name)
+    }
+
+    fun getCollectionByPin(pin: String): Collections? {
+        return collectionsDao.getCollectionByPin(pin)
+    }
+
+    // In BudgetTrackerRepository.kt
+    fun getTransactionsForCollectionInMonthSync(yearMonth: String, collectionName: String): List<Expenses> {
+        return expensesDao.getTransactionsForCollectionInMonthSync(yearMonth, collectionName)
+    }
+
+    fun getExpensesForCollectionSync(collectionName: String): List<Expenses> {
+        return expensesDao.getExpensesForCollectionSync(collectionName)
     }
 }

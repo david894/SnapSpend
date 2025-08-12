@@ -17,7 +17,11 @@ class WidgetEntryActivity : ComponentActivity() {
     }
 
     private val mainViewModel: MainViewModel by viewModels {
-        MainViewModelFactory((application as BudgetTrackerApplication).repository)
+        MainViewModelFactory(
+            (application as BudgetTrackerApplication).repository,
+            (application as BudgetTrackerApplication).firestoreRepository, // Pass it
+            applicationContext
+        )
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {

@@ -2,11 +2,13 @@ package com.kx.snapspend.data.dao
 
 import androidx.lifecycle.LiveData
 import androidx.room.Dao
+import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
 import com.kx.snapspend.model.Expenses
+import com.kx.snapspend.model.MonthlyTotal
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -34,7 +36,10 @@ interface ExpensesDao {
     @Query("SELECT SUM(amount) FROM expenses WHERE collectionName = :collectionName AND timestamp BETWEEN :startDate AND :endDate")
     suspend fun getTotalForCollectionInRange(collectionName: String, startDate: Long, endDate: Long): Double?
 
-    // New query to get the sum of expenses within a specific date range.
+    // In ExpensesDao.kt
+    @Query("SELECT SUM(amount) FROM expenses WHERE timestamp BETWEEN :startDate AND :endDate AND collectionName = :collectionName")
+    suspend fun getTotalForDateRange(startDate: Long, endDate: Long, collectionName: String): Double?
+
     @Query("SELECT SUM(amount) FROM expenses WHERE timestamp BETWEEN :startDate AND :endDate")
     suspend fun getTotalForDateRange(startDate: Long, endDate: Long): Double?
 
@@ -42,4 +47,25 @@ interface ExpensesDao {
     @Query("SELECT * FROM expenses WHERE strftime('%Y-%m', timestamp / 1000, 'unixepoch') = :yearMonth AND collectionName = :collectionName ORDER BY timestamp DESC")
     fun getTransactionsForCollectionInMonth(yearMonth: String, collectionName: String): Flow<List<Expenses>>
 
+    @Query("SELECT * FROM expenses WHERE id = :expenseId")
+    fun getExpenseByIdFlow(expenseId: Long): Flow<Expenses?>
+
+    @Delete
+    suspend fun deleteExpense(expense: Expenses)
+
+    @Query("""
+    SELECT strftime('%Y-%m', timestamp / 1000, 'unixepoch') as yearMonth, SUM(amount) as total
+    FROM expenses
+    WHERE timestamp >= :sixMonthsAgo
+    GROUP BY yearMonth
+    ORDER BY yearMonth ASC
+    """)
+    fun getSpendingForLastSixMonths(sixMonthsAgo: Long): Flow<List<MonthlyTotal>>
+
+    // In ExpensesDao.kt
+    @Query("SELECT * FROM expenses WHERE strftime('%Y-%m', timestamp / 1000, 'unixepoch') = :yearMonth AND collectionName = :collectionName")
+    fun getTransactionsForCollectionInMonthSync(yearMonth: String, collectionName: String): List<Expenses>
+
+    @Query("SELECT * FROM expenses WHERE collectionName = :collectionName")
+    fun getExpensesForCollectionSync(collectionName: String): List<Expenses>
 }

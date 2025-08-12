@@ -2,7 +2,8 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
-    id("kotlin-kapt") // <-- MAKE SURE THIS LINE EXISTS
+    id("kotlin-kapt")
+    id("com.google.gms.google-services")
 }
 
 android {
@@ -52,6 +53,12 @@ dependencies {
     implementation(libs.androidx.material3)
     implementation(libs.play.services.location)
     implementation(libs.androidx.appcompat)
+    implementation(libs.firebase.firestore)
+    implementation(libs.firebase.auth.ktx)
+    implementation(libs.firebase.auth)
+    implementation(libs.androidx.credentials)
+    implementation(libs.androidx.credentials.play.services.auth)
+    implementation(libs.googleid)
     // Room for local database
     val room_version = "2.6.1"
     implementation("androidx.room:room-runtime:$room_version")
@@ -92,4 +99,9 @@ dependencies {
 
     // Extended Material Icons
     implementation("androidx.compose.material:material-icons-extended-android:1.6.7")
+
+    implementation("com.patrykandpatrick.vico:compose-m3:1.14.0")
+
+    implementation(platform("com.google.firebase:firebase-bom:34.1.0"))
+
 }

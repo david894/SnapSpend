@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.kx.snapspend.data.dao.CollectionsDao
 import com.kx.snapspend.data.dao.ExpensesDao
@@ -23,29 +24,50 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun collectionsDao(): CollectionsDao
 
     companion object {
-        // Singleton prevents multiple instances of database opening at the same time.
         @Volatile
         private var INSTANCE: AppDatabase? = null
 
+        // NEW: Define the migration
+        val MIGRATION_1_2 = object : Migration(1, 2) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // Add the new 'budget' column to the 'collections' table with a default value of 0.0
+                db.execSQL("ALTER TABLE collections ADD COLUMN budget REAL NOT NULL DEFAULT 0.0")
+            }
+        }
+
+        val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE collections ADD COLUMN iconName TEXT NOT NULL DEFAULT 'Label'")
+                db.execSQL("ALTER TABLE collections ADD COLUMN colorHex TEXT NOT NULL DEFAULT '#FF6200EE'")
+            }
+        }
+        // NEW: Define the migration from version 3 to 4
+        val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE collections ADD COLUMN sharePin TEXT")
+            }
+        }
+
+        val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE expenses ADD COLUMN cloudId TEXT")
+            }
+        }
+
         fun getDatabase(context: Context, scope: CoroutineScope): AppDatabase {
-            // if the INSTANCE is not null, then return it,
-            // if it is, then create the database
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
                     context.applicationContext,
                     AppDatabase::class.java,
                     "budget_tracker_database"
                 )
-                    // Optional: Add a callback to pre-populate the database
-                    .addCallback(DatabaseCallback(scope))
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5) // <-- Add new migration
                     .build()
                 INSTANCE = instance
-                // return instance
                 instance
             }
         }
     }
-
     /**
      * A database callback to pre-populate the database with some initial data.
      * This is useful for testing and providing default collections.

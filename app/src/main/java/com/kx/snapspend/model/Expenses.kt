@@ -12,5 +12,6 @@ data class Expenses(
     val timestamp: Long,
     val latitude: Double?,
     val longitude: Double?,
-    var locationCategory: String? = null // e.g., "Food", "Shopping"
+    var locationCategory: String? = null,  // e.g., "Food", "Shopping"
+    val cloudId: String? = null // Add this new field
 )

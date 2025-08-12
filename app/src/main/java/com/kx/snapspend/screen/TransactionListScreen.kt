@@ -20,7 +20,8 @@ import com.kx.snapspend.viewmodel.MainViewModel
 fun TransactionListScreen(
     viewModel: MainViewModel,
     collectionName: String,
-    onNavigateUp: () -> Unit
+    onNavigateUp: () -> Unit,
+    onNavigateToEdit: (Long) -> Unit // Add this new callback
 ) {
     // Observe the new filtered list from the ViewModel
     val transactions by viewModel.getTransactionsForCollection(collectionName).collectAsState(initial = emptyList())
@@ -45,7 +46,7 @@ fun TransactionListScreen(
             LazyColumn {
                 items(transactions) { expense ->
                     // We can reuse the same list item from the dashboard
-                    ExpenseListItem(expense)
+                    ExpenseListItem(expense, onClick = { onNavigateToEdit(expense.id) })
                 }
             }
         }
