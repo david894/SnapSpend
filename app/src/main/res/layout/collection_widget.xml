@@ -1,16 +1,17 @@
-<!-- res/layout/collection_widget.xml -->
+<!-- In res/layout/collection_widget.xml -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="@drawable/widget_background"
     android:padding="16dp">
 
     <TextView
+        android:id="@+id/widget_title"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="Quick Add Expense"
-        android:textColor="@android:color/black"
+        android:textColor="?android:attr/textColorPrimary"
         android:textSize="18sp"
         android:textStyle="bold" />
 
@@ -22,6 +23,6 @@
         android:layout_marginTop="8dp"
         android:numColumns="2"
         android:horizontalSpacing="8dp"
-        android.verticalSpacing="8dp"/>
+        android:verticalSpacing="8dp"/>
 
 </LinearLayout>

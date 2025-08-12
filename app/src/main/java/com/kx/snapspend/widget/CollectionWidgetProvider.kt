@@ -29,16 +29,26 @@ class CollectionWidgetProvider : AppWidgetProvider() {
             appWidgetManager: AppWidgetManager,
             appWidgetId: Int
         ) {
-            // Set up the intent that starts the WidgetService
+            val views = RemoteViews(context.packageName, R.layout.collection_widget)
+
+            // Set the background color (this is your existing code)
+            views.setInt(R.id.widget_root, "setBackgroundColor",
+                context.resources.getColor(R.color.widget_background_color, null)
+            )
+
+            // ** THIS IS THE FIX **
+            // Programmatically set the text color using our new theme-aware color.
+            views.setTextColor(R.id.widget_title,
+                context.resources.getColor(R.color.widget_text_color, null)
+            )
+
+            // The rest of the function remains the same...
             val intent = Intent(context, WidgetService::class.java).apply {
                 putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId)
                 data = Uri.parse(toUri(Intent.URI_INTENT_SCHEME))
             }
-
-            val views = RemoteViews(context.packageName, R.layout.collection_widget)
             views.setRemoteAdapter(R.id.widget_grid_view, intent)
 
-            // Set up the pending intent template for the GridView items
             val clickIntent = Intent(context, WidgetEntryActivity::class.java)
             val clickPendingIntent = PendingIntent.getActivity(
                 context, 0, clickIntent,
@@ -46,9 +56,7 @@ class CollectionWidgetProvider : AppWidgetProvider() {
             )
             views.setPendingIntentTemplate(R.id.widget_grid_view, clickPendingIntent)
 
-            // Finally, update the widget
             appWidgetManager.updateAppWidget(appWidgetId, views)
-            // And notify the grid view to refresh its data
             appWidgetManager.notifyAppWidgetViewDataChanged(appWidgetId, R.id.widget_grid_view)
         }
     }

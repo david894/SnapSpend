@@ -3,9 +3,9 @@
     android:id="@+id/widget_collection_name"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:background="@drawable/widget_button_background"
     android:gravity="center"
-    android:padding="16dp"
+    android:minHeight="130dp"
+    android:padding="10dp"
     android:textColor="@android:color/white"
-    android:textSize="16sp"
+    android:textSize="14sp"
     android:textStyle="bold" />
