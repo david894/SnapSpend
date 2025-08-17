@@ -1,10 +1,7 @@
 <img width="1536" height="1024" alt="ChatGPT Image Aug 17, 2025, 10_59_21 PM" src="https://github.com/user-attachments/assets/1d94a3cf-a52c-4c13-9ec6-ef889ec43571" />
-# SnapSpend  budgeting App 💸
+## SnapSpend  budgeting App 💸
 
 SnapSpend is a modern, offline-first, and collaborative expense tracker for Android, built with the latest technologies. It's designed to be fast, intuitive, and intelligent, helping you manage your finances with minimal effort.
-
-![SnapSpend App Screenshot](https://i.imgur.com/your_image_code.png)
-*(**Note**: You will need to upload your screenshot to a service like Imgur and replace the link above)*
 
 ---
 
@@ -50,7 +47,7 @@ To get this project running, you'll need to set up your own Firebase backend.
 
 1.  **Clone the repository**:
     ```bash
-    git clone [https://github.com/your-username/snapspend.git](https://github.com/your-username/snapspend.git)
+    git clone https://github.com/david894/SnapSpend.git
     ```
 2.  **Firebase Setup**:
     * Go to the [Firebase Console](https://console.firebase.google.com/) and create a new project.
