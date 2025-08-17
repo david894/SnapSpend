@@ -1,5 +1,6 @@
-<img width="1536" height="1024" alt="ChatGPT Image Aug 17, 2025, 10_59_21 PM" src="https://github.com/user-attachments/assets/1d94a3cf-a52c-4c13-9ec6-ef889ec43571" />
-## SnapSpend  budgeting App 💸
+<img width="1536" height="800" alt="ChatGPT Image Aug 17, 2025, 10_59_21 PM" src="https://github.com/user-attachments/assets/1d94a3cf-a52c-4c13-9ec6-ef889ec43571" />
+
+SnapSpend  budgeting App 💸
 
 SnapSpend is a modern, offline-first, and collaborative expense tracker for Android, built with the latest technologies. It's designed to be fast, intuitive, and intelligent, helping you manage your finances with minimal effort.
 
